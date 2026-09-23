@@ -1,0 +1,20 @@
+# Исходники — никогда не публикуются (репозиторий публичный)
+source/
+*.pdf
+*.PDF
+*.otf
+*.OTF
+*.ttf
+*.TTF
+!assets/fonts/pdf/*.otf
+
+# Рабочие документы студии
+TZ_*.md
+CLAUDE.md
+.claude/
+
+# Служебное
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/
