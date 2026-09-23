@@ -2,7 +2,7 @@
 window.PASSPORT_CONFIG = {
   // Ссылка на веб-приложение Google Apps Script (см. DEPLOY.md, шаг «Отправка писем»).
   // Пока пусто — анкету можно заполнить и скачать PDF, но письмо не уйдёт.
-  appsScriptUrl: '',
+  appsScriptUrl: 'https://script.google.com/macros/s/AKfycbwVn5WU4zb_qmfJQX3zzlRFRQg5FQIjaxtUv49REZ92OHiWU-CJXoCBS6roxBO0Fb1m/exec',
   // Почта, которая по умолчанию стоит в поле получателя PDF
   defaultEmail: 'ap@antonovych-design.kz',
   // Сколько адресов можно указать за одну отправку
