@@ -8,11 +8,10 @@
 
   var CFG = window.PASSPORT_CONFIG || {};
   var TYPE = detectType();
-  var STORE_KEY = 'passport-draft-' + TYPE;
+  var project = readProject();
   var FONT_PT = 9;          // кегль вписанного текста, pt
   var data, k = 1;          // k — пикселей на 1 pt
   var state = { v: {}, emails: [], phone: '', draftId: '', savedAt: 0 };
-  var project = readProject();
   var units = [];           // вопросы для счётчика: {id, label, answered(), anchor}
   var fields = {};          // текстовые поля: key -> {label, lines, els}
   var optEls = {};          // qid -> [{o, el(tick), frame, hits}]
@@ -52,16 +51,16 @@
   var ICON_ZOOM = '<svg viewBox="0 0 24 24" fill="none" stroke="#231F20" stroke-width="2.2" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>';
   var ICON_TICK = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.6 5.2 4 7.6 8.9 1.8" fill="none" stroke="#151313" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  // ——— Черновик ———
-  function save() {
-    state.savedAt = Date.now();
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* приватный режим — работаем без черновика */ }
-  }
-  function loadDraft() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; }
-  }
-  function clearDraft() {
-    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+  // ——— Ответы не сохраняются на устройстве: каждое открытие ссылки — пустая анкета ———
+  function save() { state.savedAt = Date.now(); }
+  // Стираем черновики, оставшиеся от прежних версий сайта
+  function purgeOldDrafts() {
+    try {
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf('passport-draft-') === 0) localStorage.removeItem(key);
+      }
+    } catch (e) { /* хранилище недоступно — стирать нечего */ }
   }
 
   // ——— Перенос текста по линиям (общая логика с pdf.js) ———
@@ -473,14 +472,15 @@
         .then(function (r) { return r.json(); }, function () { throw { user: 'Не удалось отправить, проверьте интернет.' }; })
         .then(function (res) { if (!res || !res.ok) throw { user: (res && res.error) || 'Письмо не отправилось. Попробуйте ещё раз.' }; });
     }).then(function () {
+      apply({ v: {} });   // анкета ушла — страница снова пустая
       s.innerHTML = '<h2>Спасибо! Анкета отправлена</h2><p>PDF с ответами придёт на ' + esc(emails.join(', ')) + '.</p>' +
         '<div class="row"><button type="button" class="btn ghost dl">Скачать мои ответы (PDF)</button><button type="button" class="btn ok">Закрыть</button></div>';
       s.querySelector('.dl').addEventListener('click', function () { download(lastPdf); });
-      s.querySelector('.ok').addEventListener('click', sh.close);
+      s.querySelector('.ok').addEventListener('click', function () { sh.close(); window.scrollTo(0, 0); });
     }, function (err) {
       var text = (err && err.user) || 'Не удалось собрать PDF. Попробуйте ещё раз.';
       if (err && !err.user && window.console) console.error(err);
-      s.innerHTML = '<h2>Не отправлено</h2><p class="err"></p><p class="muted">Ответы сохранены на этом телефоне и никуда не пропадут.</p>' +
+      s.innerHTML = '<h2>Не отправлено</h2><p class="err"></p><p class="muted">Не закрывайте и не обновляйте страницу — иначе ответы пропадут.</p>' +
         '<div class="row"><button type="button" class="btn ghost dl">Скачать PDF</button><button type="button" class="btn retry">Повторить</button></div>';
       s.querySelector('.err').textContent = text;
       var dl = s.querySelector('.dl');
@@ -491,13 +491,6 @@
   }
 
   // ——— Старт ———
-  function askResume(draft) {
-    var sh = sheet('<h2>Продолжить заполнение?</h2><p class="muted">На этом устройстве сохранены ваши ответы.</p>' +
-      '<div class="row"><button type="button" class="btn ghost reset">Начать заново</button><button type="button" class="btn yes">Да</button></div>',
-      { center: true, modal: true });
-    sh.el.querySelector('.yes').addEventListener('click', function () { apply(draft); sh.close(); });
-    sh.el.querySelector('.reset').addEventListener('click', function () { clearDraft(); state.draftId = uid(); save(); sh.close(); });
-  }
   function apply(draft) {
     state = { v: draft.v || {}, emails: draft.emails || [], phone: draft.phone || '', draftId: draft.draftId || uid(), savedAt: draft.savedAt || 0 };
     Object.keys(fields).forEach(renderField);
@@ -512,9 +505,8 @@
     .then(function (json) {
       data = json;
       state.draftId = uid();
+      purgeOldDrafts();
       build();
-      var draft = loadDraft();
-      if (draft && draft.v && Object.keys(draft.v).length) askResume(draft);
     })
     .catch(function () {
       document.getElementById('app').innerHTML = '<p class="loading">Не удалось загрузить анкету. Проверьте интернет и обновите страницу.</p>';
