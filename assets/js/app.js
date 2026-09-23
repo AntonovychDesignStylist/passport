@@ -198,12 +198,7 @@
     var key = 'q:' + q.id + ':' + o.id;
     var on = force === undefined ? !state.v[key] : force;
     if (on) {
-      q.options.forEach(function (x) {
-        if (x === o) return;
-        // служебный вариант снимает остальные, обычный — снимает служебные
-        if (o.exclusive || x.exclusive) delete state.v['q:' + q.id + ':' + x.id];
-      });
-      state.v[key] = true;
+      state.v[key] = true;   // любые варианты можно отмечать вместе, в т. ч. «На усмотрение дизайнера»
     } else {
       delete state.v[key];
     }
